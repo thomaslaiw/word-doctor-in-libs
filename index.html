@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Word Doctor · Library</title>
+<style>
+  :root{
+    --paper:#f7f5ef; --ink:#1f2933; --muted:#5b6672; --line:#e2ddd2;
+    --teal:#0f766e; --teal-soft:#e6f2f0;
+    --ok:#15803d; --ok-soft:#e8f5ec; --no:#b45309; --no-soft:#fdf3e3;
+    --card:#ffffff; --hl:#fff3b0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    min-height:100vh; padding:16px;
+  }
+  .wrap{max-width:780px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 2px;letter-spacing:-.02em}
+  h2{font-size:19px;margin:0 0 12px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  button{font:inherit;cursor:pointer;border-radius:11px;border:1px solid var(--line);
+         background:#fff;color:var(--ink);padding:14px 18px;transition:.12s;width:100%;text-align:left}
+  button:active{transform:scale(.995)}
+  button.primary{background:var(--teal);color:#fff;border-color:var(--teal);font-weight:600;text-align:center}
+  button.primary:disabled{opacity:.35;cursor:not-allowed}
+  button.ghost{background:transparent;text-align:center}
+  .mode{display:flex;flex-direction:column;gap:11px}
+  .mode button{padding:20px 20px}
+  .mode .t{font-weight:700;font-size:18px}
+  .mode .d{color:var(--muted);font-size:13.5px;margin-top:3px}
+  .badge{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;
+         background:var(--teal-soft);color:var(--teal);font-weight:600}
+  .note{font-size:13px;color:var(--muted);margin-top:10px}
+  input[type=password],input[type=text],textarea{
+    width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;
+    font:inherit;background:#fff;color:var(--ink)
+  }
+  textarea{min-height:130px;resize:vertical}
+  .row{display:flex;gap:10px}
+  .row button{text-align:center}
+  .row>*{flex:1}
+  video{width:100%;border-radius:12px;background:#111;display:block}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .thumbs img{height:62px;border-radius:8px;border:1px solid var(--line)}
+  .status{font-size:14px;color:var(--muted);min-height:22px;margin-top:10px}
+  .status.err{color:#b91c1c}
+  .status.work{color:var(--teal)}
+
+  /* tappable words */
+  #ocrText{line-height:2.15;font-size:18px;max-height:300px;overflow:auto;
+           background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+  #ocrText .w{cursor:pointer;border-radius:5px;padding:1px 2px}
+  #ocrText .w:hover{background:#eef3f9}
+  #ocrText .w.sel{background:var(--hl);box-shadow:0 0 0 1px #e5c84a inset;font-weight:600}
+  #tray{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;min-height:36px}
+  .chip{background:var(--teal-soft);color:var(--teal);border:1px solid #cfe4e0;
+        border-radius:99px;padding:6px 12px;font-size:14px;display:flex;align-items:center;gap:7px;cursor:pointer}
+  .chip .x{opacity:.5;font-weight:700}
+  .pop{background:#fbfaf6;border:1px solid var(--line);border-radius:12px;
+       padding:14px 16px;margin-top:12px;display:none}
+  .pop.on{display:block}
+  .pop .pw{display:flex;align-items:center;gap:12px}
+  .pop .pw b{font-size:22px}
+  .pop .zh{font-size:16px;color:#334;margin-top:6px;min-height:22px}
+  .pop .zh small{color:var(--muted);font-size:13px}
+  .spk{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:20px;
+       background:var(--teal-soft);border:1px solid #cfe4e0;color:var(--teal);flex:0 0 48px}
+
+  /* quiz */
+  .sentence{font-size:20px;line-height:1.85;margin:4px 0 16px}
+  .hl{background:var(--hl);border-radius:5px;padding:1px 4px;font-weight:600;box-shadow:0 0 0 1px #e5c84a inset}
+  .q{font-weight:600;margin:0 0 14px;font-size:17px}
+  .opts{display:flex;flex-direction:column;gap:9px}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:14px 15px}
+  .opt .k{font-weight:700;color:var(--muted);flex:0 0 18px}
+  .opt.pick{border-color:var(--teal);background:var(--teal-soft)}
+  .opt.right{border-color:#86c79a;background:var(--ok-soft)}
+  .opt.wrong{border-color:#e3b778;background:var(--no-soft)}
+  .opt[disabled]{opacity:1}
+  .progress{height:6px;background:#e9e5da;border-radius:99px;overflow:hidden;margin-bottom:16px}
+  .progress i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
+  .ai{border-left:3px solid var(--teal);background:#fbfaf6;padding:13px 15px;border-radius:0 10px 10px 0;margin-top:14px}
+  .ai .h{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .ai .zh{color:#3b4550;font-size:15.5px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+
+  /* fill in the blank */
+  .fib{font-size:20px;line-height:2.3}
+  .slot{display:inline-block;min-width:88px;border-bottom:2.5px solid var(--teal);
+        text-align:center;font-weight:700;color:var(--teal);cursor:pointer;padding:0 6px;margin:0 2px}
+  .slot.filled{background:var(--teal-soft);border-radius:6px 6px 0 0}
+  .slot.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-soft)}
+  .slot.no{border-color:var(--no);color:var(--no);background:var(--no-soft)}
+  .bank{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+  .bank button{width:auto;padding:11px 17px;border-radius:99px;font-weight:600}
+  .bank button.used{opacity:.3;pointer-events:none}
+
+  /* results */
+  .big{font-size:60px;font-weight:800;letter-spacing:-.03em;line-height:1;margin:6px 0}
+  .miss{list-style:none;padding:0;margin:12px 0 0}
+  .miss li{padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .miss li:last-child{border-bottom:0}
+  .miss b{color:var(--no)}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+  .hide{display:none !important}
+  .right{text-align:right}
+  @media (max-width:520px){ .row{flex-direction:column} }
+</style>
+</head>
+<body>
+<canvas id="confetti" class="hide"></canvas>
+
+<div class="wrap">
+
+  <!-- ================= GATE ================= -->
+  <div id="screenGate">
+    <h1>Word Doctor</h1>
+    <p class="sub">Read a page. Learn the words. Bring the book back to life.</p>
+    <div class="card">
+      <p style="margin:0 0 10px;font-weight:600">Class password</p>
+      <input id="gatePw" type="password" placeholder="class password"
+             onkeydown="if(event.key==='Enter'){document.getElementById('gateKey').focus()}">
+      <p style="margin:16px 0 10px;font-weight:600">DeepSeek API key</p>
+      <input id="gateKey" type="password" placeholder="sk-..."
+             onkeydown="if(event.key==='Enter')tryGate()">
+      <p class="note">Your key stays in this browser only. It is never sent anywhere except DeepSeek.</p>
+      <div style="margin-top:14px"><button class="primary" id="gateBtn" onclick="tryGate()">Enter</button></div>
+      <div class="status err" id="gateErr"></div>
+    </div>
+  </div>
+
+  <!-- ================= HOME ================= -->
+  <div id="screenHome" class="hide">
+    <h1>Word Doctor</h1>
+    <p class="sub" id="homeSub">Choose how to practise.</p>
+
+    <div class="mode">
+      <button onclick="startMode('easy')">
+        <div class="t">Easiest words <span class="badge" id="badgeEasy">warm-up</span></div>
+        <div class="d">Words other readers got right most often. Good for starting.</div>
+      </button>
+      <button onclick="startMode('hard')">
+        <div class="t">Hardest words <span class="badge" id="badgeHard">challenge</span></div>
+        <div class="d">Words that keep tripping readers up.</div>
+      </button>
+      <button onclick="openScan()">
+        <div class="t">Scan a book page</div>
+        <div class="d">Photograph a page, tap the words you want, then play the quiz.</div>
+      </button>
+    </div>
+
+    <p class="note" id="homeNote"></p>
+    <p class="note" style="margin-top:26px;font-size:12.5px">
+      <a href="#" onclick="forgetKey();return false" style="color:var(--muted)">Forget my key on this device</a>
+      &nbsp;·&nbsp;
+      <a href="#" onclick="if(confirm('Clear every word and its score?'))resetBank();return false" style="color:var(--muted)">Reset my word bank</a>
+    </p>
+  </div>
+
+  <!-- ================= SCAN ================= -->
+  <div id="screenScan" class="hide">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="margin:0">Scan a page</h2>
+      <button class="ghost" onclick="goHome()" style="width:auto;padding:9px 15px">Back</button>
+    </div>
+
+    <div class="card">
+      <video id="cam" playsinline muted class="hide"></video>
+      <div class="row" id="camBtns">
+        <button id="camStart" onclick="toggleCam()">Start camera</button>
+        <label class="ghost" style="display:grid;place-items:center;border:1px solid var(--line);
+               border-radius:11px;background:#fff;cursor:pointer;padding:14px;text-align:center">
+          Use a photo
+          <input id="fileIn" type="file" accept="image/*" capture="environment" class="hide">
+        </label>
+      </div>
+      <div class="row hide" id="camShot">
+        <button class="primary" onclick="takeShot()">Take the picture</button>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="status" id="camStatus"></div>
+    </div>
+
+    <div class="card">
+      <p style="margin:0 0 10px;font-weight:600">Or type it here</p>
+      <textarea id="scanText" placeholder="Paste or type a page of English…"></textarea>
+      <div style="margin-top:12px"><button class="primary" id="readBtn" onclick="readPage()">Read the page</button></div>
+      <div class="status" id="readStatus"></div>
+    </div>
+
+    <div class="card hide" id="pickCard">
+      <p style="margin:0 0 10px;font-weight:600">Tap the words you want to learn</p>
+      <p class="note" style="margin-top:0">Tap once to hear it and see what it means. Tap again to keep it.</p>
+      <div id="ocrText"></div>
+      <div class="pop" id="pop">
+        <div class="pw">
+          <b id="popWord">word</b>
+          <button class="spk" onclick="speakWord(document.getElementById('popWord').textContent)">🔊</button>
+          <div style="flex:1"></div>
+          <button class="ghost" style="width:auto;padding:8px 14px" onclick="closePop()">Close</button>
+        </div>
+        <div class="zh" id="popZh"><small>loading…</small></div>
+      </div>
+      <p style="margin:16px 0 6px;font-weight:600">My words</p>
+      <div id="tray"></div>
+      <div style="margin-top:16px">
+        <button class="primary" id="quizBtn" onclick="buildFromScan()">Start the quiz</button>
+      </div>
+      <div class="status" id="quizStatus"></div>
+    </div>
+  </div>
+
+  <!-- ================= QUIZ ================= -->
+  <div id="screenQuiz" class="hide">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="badge" id="qCount">ready</div>
+      <button class="ghost" onclick="quit()" style="width:auto;padding:8px 14px;font-size:14px">Quit</button>
+    </div>
+    <div class="progress"><i id="qBar"></i></div>
+
+    <div class="card">
+      <div class="badge" id="qWord" style="margin-bottom:10px"></div>
+      <p class="sentence" id="qSentence"></p>
+      <p class="q" id="qPrompt">What is wrong with the highlighted word?</p>
+      <div class="opts" id="qOpts"></div>
+      <div style="margin-top:16px"><button class="primary" id="qLock" onclick="lockAnswer()">Lock in my answer</button></div>
+      <div class="ai hide" id="qAI">
+        <div class="h">Comments from AI</div>
+        <div id="qAiEn"></div>
+        <div class="zh" id="qAiZh"></div>
+      </div>
+      <div style="margin-top:14px"><button class="ghost hide" id="qNext" onclick="nextQuestion()">Next</button></div>
+    </div>
+  </div>
+
+  <!-- ================= FILL IN THE BLANK ================= -->
+  <div id="screenFill" class="hide">
+    <div class="badge" style="margin-bottom:14px">Fill in the blanks</div>
+    <div class="card">
+      <p class="note" style="margin-top:0">Tap a gap, then tap a word from the bank.</p>
+      <p class="fib" id="fibSentence"></p>
+      <p class="note hide" id="fibNote" style="margin-top:10px"></p>
+      <div class="hide" id="fibSpeakRow" style="margin-top:12px">
+        <button class="ghost" style="width:auto;padding:9px 15px" onclick="speakFibSentence()">🔊 Hear it again</button>
+      </div>
+      <div class="bank" id="fibBank"></div>
+      <div style="margin-top:18px"><button class="primary" id="fibCheck" onclick="checkFib()">Check</button></div>
+      <div class="ai hide" id="fibAI">
+        <div class="h">Comments from AI</div>
+        <div id="fibAiEn"></div>
+        <div class="zh" id="fibAiZh"></div>
+      </div>
+      <div style="margin-top:14px"><button class="ghost hide" id="fibNext" onclick="nextAfterFib()">Continue</button></div>
+    </div>
+  </div>
+
+  <!-- ================= RESULTS ================= -->
+  <div id="screenResults" class="hide">
+    <div class="card" style="text-align:center">
+      <p class="sub" style="margin:0">You finished</p>
+      <div class="big" id="rsScore">0 / 10</div>
+      <p id="rsLine" style="margin:6px 0 0;color:var(--muted)"></p>
+    </div>
+    <div class="card" id="rsMissCard">
+      <p style="margin:0 0 4px;font-weight:700">Words to look at again</p>
+      <ul class="miss" id="rsMiss"></ul>
+    </div>
+    <div class="row">
+      <button onclick="startMode(lastMode)">Play again</button>
+      <button class="primary" onclick="goHome()">Home</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- (word panel lives inside the scan card) -->
+
+<script>
+/* ============================================================
+   Word Doctor · Library
+   Single file. No build step. No dependencies.
+   Models: deepseek-flash (reads pictures), deepseek-chat (writes items)
+   ============================================================ */
+
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+const TEXT_MODEL   = "deepseek-chat";
+const VISION_MODEL = "deepseek-flash";
+const WIKI_API     = "https://simple.wikipedia.org/w/api.php";
+
+/* Optional shared word bank. Empty = this device only.
+   Deploy stats_server.py and put its https URL here. */
+const STATS_URL = "";
+
+const PW_SHA256 = "7c123e5056aeaaa3746eed09e0aee54df309a44d8f41cbf5678a2c3b38adee45";
+
+const $ = id => document.getElementById(id);
+const show = (id, on) => $(id).classList.toggle("hide", !on);
+
+/* ---------- tiny helpers ---------- */
+function sha256hex(str){
+  const buf = new TextEncoder().encode(str);
+  return crypto.subtle.digest("SHA-256", buf).then(b =>
+    [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join(""));
+}
+
+/* ---------- sound (no audio files) ---------- */
+let AC = null;
+function ac(){
+  if (!AC) { try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+  return AC;
+}
+function tone(freq, dur, when, gain){
+  const c = ac(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = "sine"; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, c.currentTime + when);
+  g.gain.exponentialRampToValueAtTime(gain, c.currentTime + when + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + when + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(c.currentTime + when); o.stop(c.currentTime + when + dur + 0.03);
+}
+function sfxOk(){ tone(659,0.10,0,0.16); tone(880,0.13,0.09,0.14); }
+function sfxNo(){ tone(233,0.15,0,0.14); tone(175,0.20,0.13,0.12); }
+function sfxTap(){ tone(520,0.05,0,0.05); }
+
+/* ---------- speech ---------- */
+function speakWord(w){
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(w);
+  u.lang = "en-GB"; u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+function speakSentence(s){
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(String(s));
+  u.lang = "en-GB"; u.rate = 0.92;
+  speechSynthesis.speak(u);
+}
+
+// The finished sentence, with the answers in place, as a single string.
+function fibFullSentence(){
+  if (!fibData) return "";
+  let k = 0;
+  return fibData.sentence.replace(/_{3,}/g, () => String(fibData.answers[k++] || ""));
+}
+
+function speakFibSentence(){
+  const s = fibFullSentence();
+  if (s) speakSentence(s);
+}
+
+/* ---------- CLEAN THE UNREADABLE PARTS ---------- */
+// The reader writes [unclear] where it cannot read a word. Left in, the model
+// treats it as a misspelling and every question becomes a spelling question.
+// Replace the unclear word and the word beside it with a neutral gap:
+//   "I go [unclear]chool by bus"  ->  "I ... ... by bus"
+function cleanUnclear(text){
+  let out = String(text || "");
+  const mark = /\[\s*unclear\s*\]/i;
+  let guard = 0;
+  while (mark.test(out) && guard++ < 60){
+    out = out.replace(
+      /[A-Za-z'\-]*\s*\[\s*unclear\s*\]\s*[A-Za-z'\-]*/i,
+      " ... ... "
+    );
+  }
+  return out.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/* ---------- gate ---------- */
+function getKey(){ return localStorage.getItem("wd_key") || ""; }
+
+async function tryGate(){
+  const pw = $("gatePw").value.trim();
+  const key = $("gateKey").value.trim();
+  const err = $("gateErr");
+  err.textContent = "";
+
+  if (!pw) { err.textContent = "Type the class password."; return; }
+  if (!/^sk-[A-Za-z0-9_\-]{10,}$/.test(key)) {
+    err.textContent = "That does not look like a DeepSeek key (it starts with sk-)."; return;
+  }
+  if ((await sha256hex(pw)) !== PW_SHA256) { err.textContent = "Wrong class password."; return; }
+
+  localStorage.setItem("wd_key", key);
+  show("screenGate", false);
+  goHome();
+}
+
+function forgetKey(){
+  localStorage.removeItem("wd_key");
+  $("gateKey").value = "";
+  show("screenHome", false);
+  show("screenGate", true);
+  $("gatePw").focus();
+}
+
+/* ---------- navigation ---------- */
+function only(id){
+  ["screenGate","screenHome","screenScan","screenQuiz","screenFill","screenResults"]
+    .forEach(s => show(s, s === id));
+  window.scrollTo(0,0);
+}
+function goHome(){
+  stopCam();
+  closePop();
+  only("screenHome");
+  paintHome();
+}
+
+/* ---------- SPACED BANK (word stats) ---------- */
+// v2: v1 could hold half words taken from an [unclear] patch of a bad scan
+// ("chool" from "[unclear]chool"). Changing the key discards those outright.
+const STATS_KEY = "wd_stats_v2";
+function readStats(){ try { return JSON.parse(localStorage.getItem(STATS_KEY)||"{}"); } catch(e){ return {}; } }
+function validWord(w){ return /^[a-z][a-z'\-]{1,30}$/.test(w) && w.length >= 3; }
+
+// Drop anything that is not a whole word: half words from a bad scan, gaps, junk.
+function cleanBank(){
+  const s = readStats();
+  const out = {};
+  Object.keys(s).forEach(k => { if (validWord(k)) out[k] = s[k]; });
+  writeStats(out);
+  return out;
+}
+
+function resetBank(){
+  writeStats({});
+  try { localStorage.removeItem("wd_corpus_v2"); } catch(e){}
+  paintHome();
+  alert("Word bank cleared.");
+}
+function writeStats(o){ try { localStorage.setItem(STATS_KEY, JSON.stringify(o)); } catch(e){} }
+
+function recordStat(word, correct){
+  if (!word) return;
+  const w = String(word).toLowerCase().trim();
+  // only whole, plausible words go into the bank
+  if (!/^[a-z][a-z'\-]{1,30}$/.test(w)) return;
+  if (w.length < 3) return;
+  const s = readStats();
+  const e = s[w] || {a:0, c:0};
+  e.a += 1; if (correct) e.c += 1;
+  s[w] = e;
+  writeStats(s);
+
+  if (STATS_URL) {
+    fetch(STATS_URL.replace(/\/$/,"") + "/record", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({word: w, correct: !!correct})
+    }).catch(()=>{});
+  }
+}
+
+const SEED_WORDS = ["harbour","narrow","heavy","worried","stormy","careless","boiling","warm","sailors","lamp"];
+
+async function bankWords(order, n){
+  // order: "hard" = lowest accuracy first; "easy" = highest
+  let rows = [];
+
+  if (STATS_URL) {
+    try {
+      const r = await fetch(STATS_URL.replace(/\/$/,"") + "/top?order=" + order + "&n=" + n);
+      if (r.ok) rows = (await r.json()).words || [];
+    } catch(e){}
+  }
+
+  if (!rows.length) {
+    const s = readStats();
+    rows = Object.entries(s)
+      .filter(([w,e]) => e.a > 0 && validWord(w))
+      .map(([w,e]) => ({w, acc: e.c / e.a, n: e.a}));
+    rows.sort((a,b) => order === "hard" ? a.acc - b.acc : b.acc - a.acc);
+    rows = rows.map(r => r.w);
+  }
+
+  const out = [];
+  for (const w of rows) if (out.length < n && !out.includes(w)) out.push(w);
+
+  let toppedUp = 0;
+  for (const w of SEED_WORDS) {
+    if (out.length >= n) break;
+    if (!out.includes(w)) { out.push(w); toppedUp++; }
+  }
+  return {words: out, toppedUp, fromBank: rows.length};
+}
+
+let lastMode = "easy";
+
+function paintHome(){
+  const s = cleanBank();
+  const n = Object.keys(s).length;
+  $("homeNote").textContent =
+    "Words in your word bank: " + n + ". " +
+    (STATS_URL ? "Shared with other readers." : "Saved only on this device.");
+}
+
+/* ---------- CAMERA ---------- */
+let stream = null, shots = [];
+
+async function toggleCam(){
+  if (stream) { stopCam(); return; }
+  const v = $("cam");
+  $("camStatus").className = "status work";
+  $("camStatus").textContent = "Starting the camera…";
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
+    v.srcObject = stream;
+    show("cam", true);
+    await v.play();
+    await new Promise(r => setTimeout(r, 260));
+    if (v.videoWidth === 0) { await new Promise(r => setTimeout(r, 500)); }
+    $("camStart").textContent = "Stop camera";
+    show("camShot", true);
+    $("camStatus").className = "status";
+    $("camStatus").textContent = "Camera ready. Fill the frame with the page.";
+  } catch(err){
+    stream = null;
+    $("camStatus").className = "status err";
+    const n = (err && err.name) || "";
+    if (n === "NotAllowedError") $("camStatus").textContent = "The camera is blocked. Allow it in the address bar, then try again.";
+    else if (n === "NotFoundError") $("camStatus").textContent = "No camera was found on this device. Use a photo instead.";
+    else if (n === "NotReadableError") $("camStatus").textContent = "The camera is busy in another app. Close it and try again.";
+    else $("camStatus").textContent = "The camera did not start. Use a photo instead.";
+  }
+}
+function stopCam(){
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  show("cam", false); show("camShot", false);
+  $("camStart").textContent = "Start camera";
+}
+function takeShot(){
+  const v = $("cam");
+  if (!v.videoWidth) return;
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  shots.push(c.toDataURL("image/jpeg", 0.86));
+  paintThumbs();
+  $("camStatus").className = "status";
+  $("camStatus").textContent = shots.length + " picture(s) ready. Press Read the page.";
+}
+function paintThumbs(){
+  $("thumbs").innerHTML = "";
+  shots.forEach((src, i) => {
+    const im = document.createElement("img"); im.src = src;
+    im.onclick = () => { shots.splice(i,1); paintThumbs(); };
+    $("thumbs").appendChild(im);
+  });
+}
+$("fileIn").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => { shots.push(fr.result); paintThumbs();
+    $("camStatus").className = "status";
+    $("camStatus").textContent = shots.length + " picture(s) ready. Press Read the page."; };
+  fr.readAsDataURL(f);
+});
+
+/* ---------- IMAGE PREP ---------- */
+function prepareImage(dataUrl, maxDim){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let {width:w, height:h} = img;
+      const scale = Math.min(1.6, maxDim / Math.max(w,h));
+      const cw = Math.round(w * scale), ch = Math.round(h * scale);
+      const c = document.createElement("canvas");
+      c.width = cw; c.height = ch;
+      c.getContext("2d").drawImage(img, 0, 0, cw, ch);
+      resolve(c.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = () => reject(new Error("that picture could not be opened"));
+    img.src = dataUrl;
+  });
+}
+
+/* ---------- READ A PAGE (vision) ---------- */
+const READ_RULES =
+  "You read a page of an English book and return the text.\n" +
+  "Rules:\n" +
+  "1. Return only the words on the page, in reading order. No comments.\n" +
+  "2. Keep the original spelling exactly. If the book has a misspelling, keep it.\n" +
+  "3. If a word cannot be read, write [unclear] instead of guessing.\n" +
+  "4. Keep line breaks where the page has them.";
+
+async function readOnePicture(dataUrl){
+  const key = getKey();
+  const prepared = await prepareImage(dataUrl, 1600);
+  const res = await fetch(DEEPSEEK_URL, {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + key},
+    body: JSON.stringify({
+      model: VISION_MODEL,
+      messages: [{
+        role: "user",
+        content: [
+          {type: "text", text: READ_RULES},
+          {type: "image_url", image_url: {url: prepared}}
+        ]
+      }],
+      max_tokens: 16000,
+      temperature: 0
+    })
+  });
+  if (!res.ok) throw new Error("the reader replied " + res.status);
+  const p = await res.json();
+  const ch = (p.choices && p.choices[0]) || {};
+  const txt = ((ch.message && ch.message.content) || "").trim();
+  if (!txt) {
+    if (ch.finish_reason === "length")
+      throw new Error("the reader ran out of room. Try a smaller or clearer picture.");
+    throw new Error("no text came back from that picture");
+  }
+  return txt;
+}
+
+async function readPage(){
+  const typed = $("scanText").value.trim();
+  const st = $("readStatus");
+  const btn = $("readBtn");
+  btn.disabled = true;
+  st.className = "status work";
+
+  try{
+    let text = "";
+    if (shots.length){
+      st.textContent = "Reading picture 1 of " + shots.length + "…";
+      for (let i = 0; i < shots.length; i++){
+        st.textContent = "Reading picture " + (i+1) + " of " + shots.length + "…";
+        text += (i ? "\n" : "") + await readOnePicture(shots[i]);
+      }
+      if (typed) text = typed + "\n" + text;
+    } else if (typed){
+      text = typed;
+    } else {
+      throw new Error("take a picture or type some text first");
+    }
+
+    const hadUnclear = /\[\s*unclear\s*\]/i.test(text);
+    text = cleanUnclear(text);
+    if (text.split(/\s+/).filter(Boolean).length < 12)
+      throw new Error("that is too short. Read a little more of the page.");
+
+    currentText = text;
+    renderTappableWords(text);
+    show("pickCard", true);
+    st.className = "status";
+    st.textContent = "Read " + text.split(/\s+/).length + " words. Now tap the ones you want." +
+      (hadUnclear ? " (Some words could not be read and were left as gaps.)" : "");
+  } catch(e){
+    st.className = "status err";
+    st.textContent = e.message || "something went wrong";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---------- TAPPABLE WORDS ---------- */
+let currentText = "";
+let picked = [];               // selected words, lowercase
+const XLATE_KEY = "wd_xlate_v1";
+
+function renderTappableWords(text){
+  const box = $("ocrText");
+  box.innerHTML = "";
+  const parts = text.split(/([A-Za-z][A-Za-z'\-]*)/);
+  parts.forEach(part => {
+    if (/^[A-Za-z][A-Za-z'\-]*$/.test(part)) {
+      const sp = document.createElement("span");
+      sp.className = "w" + (picked.includes(part.toLowerCase()) ? " sel" : "");
+      sp.textContent = part;
+      sp.dataset.w = part.toLowerCase();
+      sp.addEventListener("click", () => onWordTap(sp));
+      box.appendChild(sp);
+    } else {
+      box.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
+function onWordTap(sp){
+  const w = sp.dataset.w;
+  speakWord(sp.textContent);
+  openPop(sp.textContent, w);
+
+  if (picked.includes(w)) {
+    picked = picked.filter(x => x !== w);
+    sp.classList.remove("sel");
+  } else {
+    picked.push(w);
+    sp.classList.add("sel");
+  }
+  paintTray();
+}
+
+function paintTray(){
+  const tray = $("tray");
+  tray.innerHTML = "";
+  if (!picked.length) {
+    tray.innerHTML = '<span class="note" style="margin:0">None yet. You can also just press Start the quiz.</span>';
+    return;
+  }
+  picked.forEach(w => {
+    const c = document.createElement("span");
+    c.className = "chip";
+    c.innerHTML = w + ' <span class="x">×</span>';
+    c.onclick = () => {
+      picked = picked.filter(x => x !== w);
+      document.querySelectorAll("#ocrText .w").forEach(el => {
+        if (el.dataset.w === w) el.classList.remove("sel");
+      });
+      paintTray();
+    };
+    tray.appendChild(c);
+  });
+}
+
+/* ---------- POPOVER + TRANSLATION ---------- */
+let popWordNow = "";
+function openPop(display, lower){
+  popWordNow = lower;
+  $("popWord").textContent = display;
+  $("popZh").innerHTML = "<small>loading…</small>";
+  $("pop").classList.add("on");
+  translateWord(lower).then(zh => {
+    if (popWordNow === lower) $("popZh").textContent = zh;
+  }).catch(() => {
+    if (popWordNow === lower) $("popZh").innerHTML = "<small>could not load the meaning</small>";
+  });
+}
+function closePop(){ $("pop").classList.remove("on"); }
+
+async function translateWord(w){
+  let cache = {};
+  try { cache = JSON.parse(localStorage.getItem(XLATE_KEY) || "{}"); } catch(e){}
+
+  const key = w + "|" + (currentText ? currentText.length : 0);
+
+  if (cache[w]) return cache[w];
+
+  const res = await fetch(DEEPSEEK_URL, {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + getKey()},
+    body: JSON.stringify({
+      model: TEXT_MODEL,
+      messages: [{
+        role: "user",
+        content:
+          "Give the meaning in TRADITIONAL CHINESE (written form, not Cantonese) of this English word " +
+          "as a primary school reader would meet it in a book.\n" +
+          "Keep it to a short gloss of 2 to 8 characters, plus the part of speech in brackets.\n" +
+          'Reply with JSON only: {"zh":"..."}\n\n' +
+          "Word: " + w
+      }],
+      temperature: 0,
+      max_tokens: 120,
+      response_format: {type:"json_object"}
+    })
+  });
+  if (!res.ok) throw new Error("translate " + res.status);
+  const p = await res.json();
+  let zh = "";
+  try { zh = JSON.parse(p.choices[0].message.content).zh || ""; } catch(e){}
+  if (!zh) throw new Error("no meaning");
+
+  cache[w] = zh;
+  try { localStorage.setItem(XLATE_KEY, JSON.stringify(cache)); } catch(e){}
+  return zh;
+}
+
+/* ---------- SIMPLE WIKIPEDIA CORPUS ---------- */
+const SAFE_TOPICS = ["Harbour","Lighthouse","Rain","River","Weather","Sea","Ship","Farm","Market","Castle",
+  "Bridge","Forest","Mountain","Island","Village","School","Library","Bread","Water","Wind","Snow","Storm",
+  "Bird","Fish","Horse","Dog","Cat","Garden","Kitchen","Window","Door","Road","Train","Bicycle","Boat"];
+
+const CORPUS_CACHE_KEY = "wd_corpus_v2";
+let corpusCache = null;
+function loadCorpus(){
+  if (corpusCache) return corpusCache;
+  try { corpusCache = JSON.parse(localStorage.getItem(CORPUS_CACHE_KEY) || "{}"); }
+  catch(e){ corpusCache = {}; }
+  return corpusCache;
+}
+function saveCorpus(){
+  try { localStorage.setItem(CORPUS_CACHE_KEY, JSON.stringify(corpusCache)); } catch(e){}
+}
+
+async function articleText(title){
+  const cache = loadCorpus();
+  if (cache[title]) return cache[title];
+  const url = WIKI_API + "?action=query&prop=extracts&explaintext=1&format=json&origin=*&titles=" +
+              encodeURIComponent(title);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("wiki " + r.status);
+  const d = await r.json();
+  const pages = (d.query && d.query.pages) || {};
+  const first = Object.values(pages)[0] || {};
+  let text = first.extract || "";
+  text = text.replace(/^=+\s*(.+?)\s*=+$/gm, "").replace(/\n{3,}/g,"\n\n").trim();
+  if (text) { cache[title] = text; saveCorpus(); }
+  return text;
+}
+
+function sentencesWith(text, word){
+  const out = [];
+  const parts = text.split(/(?<=[.!?])\s+/);
+  const re = new RegExp("\\b" + word.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + "\\b", "i");
+  for (const raw of parts){
+    const s = raw.trim();
+    if (!re.test(s)) continue;
+    const n = s.split(/\s+/).length;
+    if (n < 6 || n > 20) continue;      // keep sentences short enough for P5
+    // Very long words are usually technical prose: "photosynthesis", "manufactured".
+    // A primary reader meets them as noise, not as a sentence to diagnose.
+    if (s.split(/\s+/).some(w => w.replace(/[^A-Za-z]/g, "").length > 11)) continue;
+    if (/[\(\[]/.test(s) || /\.\.\./.test(s)) continue;  // brackets and gaps break under substitution
+    if (!/[.!?]$/.test(s)) continue;                      // a fragment is not a sentence
+    if (/\b(spelling|spelled|spelt|pronounced|means? the word|also called|known as)\b/i.test(s)) continue;
+    if (/["“”]/.test(s)) continue;
+    if (/={2,}/.test(s) || /^\s*\|/.test(s) || /\{\{|\}\}/.test(s)) continue;
+    out.push(s);
+  }
+  return out;
+}
+
+async function gatherCorpus(words){
+  const found = {};
+  const wanted = words.slice();
+  let checked = 0;
+  for (let t = 0; t < SAFE_TOPICS.length && wanted.length && checked < 40; t++){
+    let text = "";
+    try { text = await articleText(SAFE_TOPICS[t]); } catch(e){ continue; }
+    checked++;
+    if (!text) continue;
+    for (let i = wanted.length - 1; i >= 0; i--){
+      const w = wanted[i];
+      const ss = sentencesWith(text, w);
+      if (ss.length){ found[w] = ss[0]; wanted.splice(i,1); }
+    }
+  }
+  return found;
+}
+
+/* find sentences using the most of a set of words (for fill in the blank) */
+async function multiWordSentences(words, limit){
+  const pool = [];
+  const seen = {};
+  const texts = [];
+  // fetch each topic once, then scan every target word against it
+  for (const t of SAFE_TOPICS.slice(0, 16)){
+    let text = "";
+    try { text = await articleText(t); } catch(e){ continue; }
+    if (text) texts.push(text);
+  }
+  for (const text of texts){
+    const parts = text.split(/(?<=[.!?])\s+/);
+    for (const raw of parts){
+      const s = raw.trim();
+      const n = s.split(/\s+/).length;
+      if (n < 6 || n > 24) continue;
+      if (/[\(\[]/.test(s)) continue;
+      if (/["“”]/.test(s)) continue;
+      if (/={2,}/.test(s)) continue;
+      const k = s.toLowerCase();
+      if (seen[k]) continue;
+      let hits = 0;
+      for (const w of words){
+        if (new RegExp("\\b"+String(w).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i").test(s)) hits++;
+      }
+      if (hits >= 2) { seen[k] = 1; pool.push({s, hits}); }
+    }
+  }
+  pool.sort((a,b) => b.hits - a.hits);
+  return pool.slice(0, limit || 4);
+}
+
+/* ---------- QUICK MODEL CALL ---------- */
+async function askModel(prompt, maxTokens, json){
+  const body = {
+    model: TEXT_MODEL,
+    messages: [{role:"user", content: prompt}],
+    temperature: 0.4,
+    max_tokens: maxTokens || 2000
+  };
+  if (json) body.response_format = {type:"json_object"};
+
+  const res = await fetch(DEEPSEEK_URL, {
+    method: "POST",
+    headers: {"Content-Type":"application/json","Authorization":"Bearer " + getKey()},
+    body: JSON.stringify(body)
+  });
+  if (res.status === 401) throw new Error("your key was rejected (401)");
+  if (res.status === 402) throw new Error("no credit left on this key (402)");
+  if (!res.ok) throw new Error("the service replied " + res.status);
+
+  const p = await res.json();
+  const ch = (p.choices && p.choices[0]) || {};
+  const txt = ((ch.message && ch.message.content) || "").trim();
+  if (!txt) {
+    if (ch.finish_reason === "length") throw new Error("the model ran out of room");
+    throw new Error("the model sent nothing back");
+  }
+  if (!json) return txt;
+  return parseJsonLoose(txt);
+}
+
+function parseJsonLoose(t){
+  t = String(t).trim().replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a === -1 || b === -1) throw new Error("the model did not send JSON");
+  return JSON.parse(t.slice(a, b+1));
+}
+
+/* ============================================================
+   ITEM GENERATION
+   ============================================================ */
+const ITEM_RULES =
+  "You write Word Doctor items for a Hong Kong primary reader (P5-P6) who is reading a book in a library.\n" +
+  "The reader plays alone on a phone or tablet. Write to the reader as 'you'.\n\n" +
+  "You are given REAL published sentences, one per target word. Each base sentence is correct.\n" +
+  "For each sentence, produce ONE item of one of two kinds:\n\n" +
+  "  KIND A (make it wrong): replace the target word with a REAL English word that is WRONG here.\n" +
+  "  KIND B (nothing wrong): keep the sentence exactly as published.\n\n" +
+  "Produce as many KIND A and KIND B as the list allows; aim for roughly 4 wrong to 2 fine.\n\n" +
+  "HARD RULES - an item is rejected if any of these is broken:\n" +
+  "1. Every option must be a REAL English word or phrase. Never invent a word such as 'harboury'.\n" +
+  "2. The four options must be four different DIAGNOSES of the sentence, not four spellings of one word.\n" +
+  "   Example of good options:\n" +
+  "     A. Nothing is wrong.\n" +
+  "     B. It should name a place for ships, not a place for buying things.\n" +
+  "     C. It is the wrong kind of word for this position.\n" +
+  "     D. It is too weak a word for this meaning.\n" +
+  "3. KIND B: the correct option is 'Nothing is wrong.' and the comment must say the sentence is correct\n" +
+  "   and explain why. It must NOT mention a spelling problem.\n" +
+  "4. KIND A: the sentence you write must contain the wrong word wrapped in <span class='hl'>word</span>.\n" +
+  "   Everything else stays as published. Do not modernise or shorten the sentence.\n" +
+  "5. Sentences must be easy to read: aim for 20 words or fewer. If the published sentence is longer\n" +
+  "   than that, choose a different kind B and skip that word.\n" +
+  "6. aiEn: simple English, 20 words maximum. aiZh: standard written TRADITIONAL Chinese.\n" +
+  "   Traditional only: 這個 沒有 為什麼 是 學生 說 正確. Never Simplified.\n" +
+  "   Never Cantonese particles: 唔 嘅 咁 喎 啱 佢 睇 識 攞 俾 冇.\n" +
+  "7. whyEn and whyZh: talk to the reader. Never say 'the student'.\n" +
+  "8. Before you answer, test your own item. If the 'wrong' word is not really wrong, make it KIND B.\n" +
+  "9. 'target' must be the exact word from my input list for that item, not the word you swapped in.\n" +
+  "10. NEVER make the fault a spelling mistake, and never leave a half word or a gap in the sentence.\n" +
+  "    Every word must be spelled correctly. The fault must be about meaning or word form only.\n\n" +
+  "Reply with JSON only:\n" +
+  '{"items":[{"target":"the word from my input list","kind":"A"|"B","sentence":"...","qEn":"What is wrong with the highlighted word?",' +
+  '"opts":[{"en":"..."},{"en":"..."},{"en":"..."},{"en":"..."}],"key":0,' +
+  '"aiEn":"...","aiZh":"...","whyEn":"...","whyZh":"..."}]}\n\n';
+
+async function makeItems(pairs){   // pairs: [{word, sentence}]
+  const prompt =
+    ITEM_RULES +
+    "Target words and their published sentences:\n" +
+    pairs.map(p => "- word: " + p.word + "  |  sentence: " + p.sentence).join("\n") +
+    "\n\nProduce one item per word, in the same order.";
+
+  const raw = await askModel(prompt, 8000, true);
+  let items = (raw.items || []);
+
+  // repair: make sure the highlight wrapper is present
+  items.forEach(it => {
+    if (!it || typeof it.sentence !== "string") return;
+    if (it.sentence.indexOf("class='hl'") !== -1 || it.sentence.indexOf('class="hl"') !== -1) return;
+    const target = String(it.target || it.word || "").trim();
+    if (!target) return;
+    const re = new RegExp("\\b(" + target.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + ")\\b","i");
+    if (re.test(it.sentence)) it.sentence = it.sentence.replace(re, "<span class='hl'>$1</span>");
+  });
+
+  // Cheap guards against errors a child would spot immediately.
+  // "an young river" and sentences with no full stop both got through before.
+  const badArticle = s => /\ba\s+[aeiou]/i.test(s) || /\ban\s+[b-df-hj-np-tv-z]/i.test(s);
+  const endsProperly = s => /[.!?]\s*$/.test(s);
+
+  items = items.filter(it =>
+    it && it.target && Array.isArray(it.opts) && it.opts.length === 4 &&
+    typeof it.key === "number" && it.key >= 0 && it.key <= 3 &&
+    it.sentence && it.aiEn && it.aiZh &&
+    it.sentence.indexOf("class='hl'") !== -1 &&
+    !/[(\[]/.test(it.sentence) &&
+    !/\.\.\./.test(it.sentence) &&
+    !/={2,}/.test(it.sentence) &&
+    !badArticle(it.sentence.replace(/<[^>]+>/g, "")) &&
+    endsProperly(it.sentence.replace(/<[^>]+>/g, "")));
+
+  // The model tends to put the right answer in slot A or B. Left alone, a
+  // reader learns to press the first two buttons. Shuffle, then re-find the key.
+  items.forEach(it => {
+    const rightText = it.opts[it.key] && it.opts[it.key].en;
+    for (let i = it.opts.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = it.opts[i]; it.opts[i] = it.opts[j]; it.opts[j] = t;
+    }
+    const found = it.opts.findIndex(o => o && o.en === rightText);
+    if (found !== -1) it.key = found;
+  });
+
+  return items;
+}
+
+/* ---------- FILL IN THE BLANK ---------- */
+async function makeFillBlank(fiveWords, candidates){
+  const candTxt = candidates && candidates.length
+    ? candidates.map(c => "- " + c.s + "   (uses " + c.hits + " of the words)").join("\n")
+    : "(none found)";
+
+  const prompt =
+    "You write ONE fill-in-the-blank question for a Hong Kong primary reader (P5-P6).\n" +
+    "Target words from the last five questions: " + fiveWords.join(", ") + "\n\n" +
+    "Published sentences that use more than one of those words:\n" + candTxt + "\n\n" +
+    "Rules:\n" +
+    "1. Use one of the published sentences above if one uses at least two of the target words.\n" +
+    "   Otherwise write one short, simple sentence of your own that uses two of the words.\n" +
+    "2. Leave 1 to 3 gaps, and every gap must be filled by one of the target words.\n" +
+    "   Mark each gap with exactly three underscores: ___\n" +
+    "3. Provide the answers in the order the gaps appear.\n" +
+    "4. Provide 3 EXTRA options that are NOT answers. A wrong option must be clearly different in\n" +
+    "   meaning from every answer. NEVER use a synonym, a near-synonym, or another form of an answer\n" +
+    "   (so if the answer is 'heavy', do not offer 'heavily' or 'weighty').\n" +
+    "5. Options must be real words a P5 reader has met.\n" +
+    "6. Sentence: 20 words maximum. Chinese must be standard written Traditional Chinese.\n" +
+    "7. aiEn and aiZh talk to the READER, using 'you'. Never write 'the student', 'the learner',\n" +
+    "   'students', or 'the child'. Describe the sentence, not a third person who answered it.\n" +
+    "   Good: 'The lamp gives light, so it fits here.' Bad: 'The student chose the right word.'\n" +
+    "8. aiZh must also address the reader. Never use 學生 as the subject of the sentence.\n\n" +
+    'Reply with JSON only: {"sentence":"... ___ ...","answers":["..."],"extras":["...","...","..."],' +
+    '"aiEn":"...","aiZh":"..."}';
+
+  return await askModel(prompt, 1200, true);
+}
+
+/* ============================================================
+   QUIZ ENGINE
+   ============================================================ */
+let ITEMS = [], idx = 0, score = 0, missed = [], setCount = 0;
+const SET_SIZE = 5, TOTAL = 10;
+let pendingFib = null, fibAfter = 0;
+
+function setStatus(id, txt, cls){
+  const el = $(id);
+  el.className = "status " + (cls || "");
+  el.textContent = txt || "";
+}
+
+/* --- build a 10-question run from a word list --- */
+async function buildRun(words, note){
+  only("screenQuiz");
+  $("qCount").textContent = "getting ready";
+  $("qBar").style.width = "0%";
+  $("qSentence").textContent = "";
+  $("qPrompt").textContent = "";
+  $("qOpts").innerHTML = "";
+  $("qAI").classList.add("hide");
+  $("qNext").classList.add("hide");
+  $("qLock").classList.add("hide");
+  $("qWord").textContent = note || "";
+
+  const uniq = [...new Set(words.map(w => String(w).toLowerCase()))].slice(0, TOTAL);
+
+  // Sentences always come from Simple Wikipedia, the same way the Easiest and
+  // Hardest modes get theirs. Using the page the child just scanned produced
+  // items that repeated that page word for word, which made the quiz a
+  // comprehension check on the page instead of a vocabulary task.
+  const corpus = await gatherCorpus(uniq);
+
+  // 3. last resort: no published sentence for that word. Ask for one short,
+  //    simple sentence rather than dropping the word - dropping it would
+  //    quietly remove exactly the harder words from the "hardest" list.
+  const missing = uniq.filter(w => !corpus[w]);
+  if (missing.length){
+    try{
+      const made = await askModel(
+        "Write ONE short, simple, grammatically correct English sentence for each word below.\n" +
+        "The reader is a Hong Kong primary 5-6 pupil. 12 words or fewer. Use the word naturally.\n" +
+        'Reply with JSON only: {"items":[{"word":"...","sentence":"..."}]}\n\n' +
+        "Words: " + missing.join(", "),
+        1200, true);
+      (made.items || []).forEach(x => {
+        if (!x || !x.word || !x.sentence) return;
+        const k = String(x.word).toLowerCase();
+        if (!corpus[k]) corpus[k] = String(x.sentence).trim().replace(/\s+/g, " ");
+      });
+    } catch(e){}
+  }
+
+  const pairs = Object.entries(corpus).map(([w, s]) => ({word: w, sentence: s}));
+  if (!pairs.length) throw new Error("could not find sentences for these words");
+
+  const items = await makeItems(pairs);
+  if (!items.length) throw new Error("no usable questions came back");
+
+  // Restore the intended order. For the "hardest" and "easiest" modes this is
+  // the whole point of the run, and the sentence corpus does not preserve it.
+  const want = {};
+  uniq.forEach((w, i) => { want[w] = i; });
+  items.sort((a, b) => {
+    const ra = want[String(a.target || "").toLowerCase()];
+    const rb = want[String(b.target || "").toLowerCase()];
+    return (ra === undefined ? 999 : ra) - (rb === undefined ? 999 : rb);
+  });
+
+  ITEMS = items.slice(0, TOTAL);
+  idx = 0; score = 0; missed = []; setCount = 0;
+  renderQuestion();
+}
+
+let pickedOpt = -1;
+
+function renderQuestion(){
+  if (idx >= ITEMS.length) return finish();
+  const it = ITEMS[idx];
+  $("qCount").textContent = (idx + 1) + " of " + ITEMS.length;
+  $("qBar").style.width = Math.round(idx / ITEMS.length * 100) + "%";
+
+  const m = String(it.sentence).match(/<span class='hl'>(.*?)<\/span>/);
+  $("qWord").textContent = m ? m[1] : (it.word || "");
+  $("qSentence").innerHTML = "\u201C" + it.sentence + "\u201D";
+  $("qPrompt").textContent = "What is wrong with the highlighted word?";
+
+  $("qOpts").innerHTML = "";
+  it.opts.forEach((o, i) => {
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.innerHTML = '<span class="k">' + "ABCD"[i] + '</span><span>' + esc(o.en) + '</span>';
+    b.dataset.i = i;
+    b.onclick = () => pickOption(i);
+    $("qOpts").appendChild(b);
+  });
+
+  pickedOpt = -1;
+  $("qAI").classList.add("hide");
+  $("qNext").classList.add("hide");
+  $("qLock").classList.remove("hide");
+  $("qLock").disabled = true;
+  $("qLock").textContent = "Lock in my answer";
+}
+
+function pickOption(i){
+  pickedOpt = i;
+  [...$("qOpts").children].forEach((b, j) => b.classList.toggle("pick", j === i));
+  $("qLock").disabled = false;
+  sfxTap();
+}
+
+function lockAnswer(){
+  const it = ITEMS[idx];
+  if (pickedOpt === -1) return;
+  const ok = pickedOpt === it.key;
+
+  [...$("qOpts").children].forEach((b, j) => {
+    b.disabled = true;
+    if (j === it.key) b.classList.add("right");
+    if (j === pickedOpt && !ok) b.classList.add("wrong");
+  });
+
+  const targetWord = it.target || it.word || hlWord(it);
+  if (ok) { score++; sfxOk(); } else { missed.push(targetWord); sfxNo(); }
+  recordStat(targetWord, ok);
+
+  $("qAiEn").textContent = it.aiEn || "";
+  $("qAiZh").textContent = it.aiZh || "";
+  $("qAI").classList.remove("hide");
+  $("qLock").classList.add("hide");
+  $("qNext").classList.remove("hide");
+  // A fill in the blank follows every fifth answer, so the last quiz question
+  // is usually not the last screen. Only say "See my score" when nothing follows.
+  const afterAnswered = idx + 1;
+  const fibFollows = afterAnswered % SET_SIZE === 0;
+  $("qNext").textContent = (!fibFollows && afterAnswered >= ITEMS.length) ? "See my score" : "Next";
+  $("qNext").focus();
+}
+
+async function nextQuestion(){
+  idx++;
+  // after every five answers, a fill in the blank comes before moving on
+  if (idx % SET_SIZE === 0) { await openFib(idx); return; }
+  if (idx >= ITEMS.length) { finish(); return; }
+  renderQuestion();
+}
+
+/* ---------- FILL IN THE BLANK SCREEN ---------- */
+let fibData = null, fibSlots = [], fibUsed = [];
+
+async function openFib(after){
+  fibAfter = after;
+  only("screenFill");
+  $("fibSentence").innerHTML = "<span style='color:#66707a'>writing a sentence…</span>";
+  $("fibBank").innerHTML = "";
+  $("fibAI").classList.add("hide");
+  $("fibNext").classList.add("hide");
+  $("fibSpeakRow").classList.add("hide");
+  $("fibCheck").classList.remove("hide");
+  $("fibCheck").disabled = true;
+
+  const five = ITEMS.slice(after - SET_SIZE, after).map(i => String(i.target || i.word || "").toLowerCase()).filter(Boolean);
+  try{
+    const cands = await multiWordSentences(five, 4);
+    const data = await makeFillBlank(five, cands);
+    fibData = normaliseFib(data, five);
+    renderFib();
+  } catch(e){
+    // no fill in the blank is not fatal - the lesson continues
+    nextQuestionPlain();
+  }
+}
+
+function normaliseFib(d, five){
+  let sentence = String(d.sentence || "").trim();
+  // tidy the spacing a gap leaves behind: "evening , we" -> "evening, we"
+  sentence = sentence.replace(/\s+([,.!?;:])/g, "$1").replace(/\s+_{3,}/g, " ___");
+  let answers = (d.answers || []).map(String);
+  let extras  = (d.extras  || []).map(String);
+
+  // must contain underscores
+  if (!/_{3,}/.test(sentence)) return null;
+  const gaps = (sentence.match(/_{3,}/g) || []).length;
+  answers = answers.slice(0, gaps);
+  if (answers.length !== gaps) return null;
+
+  // reject synonyms / same stem as an answer
+  const stem = w => String(w).toLowerCase().slice(0, Math.max(4, Math.ceil(w.length * 0.7)));
+  extras = extras.filter(x => !answers.some(a => stem(a) === stem(x)));
+
+  while (extras.length < 3) {
+    const pool = ["bench","quiet","heavy","bright","narrow","empty","garden","engine","letter","harbour"];
+    const cand = pool.find(p => !answers.includes(p) && !extras.includes(p));
+    if (!cand) break;
+    extras.push(cand);
+  }
+  if (extras.length < 3) return null;
+
+  return {sentence, answers, extras: extras.slice(0,3),
+          aiEn: d.aiEn || "", aiZh: d.aiZh || ""};
+}
+
+function renderFib(){
+  if (!fibData) { nextQuestionPlain(); return; }
+  const parts = fibData.sentence.split(/_{3,}/);
+  const box = $("fibSentence");
+  box.innerHTML = "";
+  fibSlots = [];
+
+  parts.forEach((p, i) => {
+    box.appendChild(document.createTextNode(p));
+    if (i < parts.length - 1){
+      const s = document.createElement("span");
+      s.className = "slot";
+      s.textContent = "＿＿";
+      s.dataset.i = i;
+      s.onclick = () => focusSlot(i);
+      box.appendChild(s);
+      fibSlots.push(s);
+    }
+  });
+
+  // word bank: answers + extras, shuffled
+  const bank = [...fibData.answers, ...fibData.extras].map(w => ({w, used:false}));
+  for (let i = bank.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [bank[i], bank[j]] = [bank[j], bank[i]];
+  }
+  fibUsed = bank;
+  $("fibBank").innerHTML = "";
+  fibUsed.forEach((b, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = b.w;
+    btn.dataset.i = i;
+    btn.onclick = () => placeWord(i);
+    $("fibBank").appendChild(btn);
+  });
+
+  activeSlot = 0; focusSlot(0);
+  $("fibCheck").disabled = false;
+}
+
+let activeSlot = 0;
+function focusSlot(i){
+  activeSlot = i;
+  fibSlots.forEach((s, j) => s.style.outline = j === i ? "2px solid #0f766e" : "none");
+  sfxTap();
+}
+function releaseSlot(i){
+  const s = fibSlots[i];
+  const prev = s.dataset.word;
+  if (!prev) return;
+  const b = fibUsed.find(x => x.w === prev && x.used);
+  if (b) b.used = false;
+  s.dataset.word = "";
+  s.textContent = "＿＿";
+  s.classList.remove("filled");
+  repaintBank();
+}
+function placeWord(bankIdx){
+  const b = fibUsed[bankIdx];
+  if (!b || b.used) return;
+  const s = fibSlots[activeSlot];
+  if (!s) return;
+  releaseSlot(activeSlot);
+  b.used = true;
+  s.dataset.word = b.w;
+  s.textContent = b.w;
+  s.classList.add("filled");
+  repaintBank();
+  sfxTap();
+
+  const next = fibSlots.findIndex((x, j) => j > activeSlot && !x.dataset.word);
+  if (next !== -1) focusSlot(next);
+}
+function repaintBank(){
+  [...$("fibBank").children].forEach((btn, i) => {
+    btn.classList.toggle("used", fibUsed[i].used);
+  });
+}
+
+function checkFib(){
+  let allRight = true;
+  const wrongPicks = [];
+  fibSlots.forEach((s, i) => {
+    const want = String(fibData.answers[i] || "");
+    const got  = s.dataset.word || "";
+    const ok   = got.toLowerCase() === want.toLowerCase();
+    s.classList.remove("filled","ok","no");
+    s.classList.add(ok ? "ok" : "no");
+    // always show the word that belongs in the gap, so the sentence stays readable
+    s.textContent = want;
+    if (!ok) { allRight = false; wrongPicks.push(got ? ("it should be “" + want + "”, you put “" + got + "”") : ("the gap should be “" + want + "”")); }
+  });
+
+  const note = $("fibNote");
+  if (wrongPicks.length){
+    note.classList.remove("hide");
+    note.textContent = "Not quite — " + wrongPicks.join("; ");
+  } else {
+    note.classList.add("hide");
+    note.textContent = "";
+  }
+
+  if (allRight) sfxOk(); else sfxNo();
+
+  $("fibAiEn").textContent = fibData.aiEn || "";
+  $("fibAiZh").textContent = fibData.aiZh || "";
+  $("fibAI").classList.remove("hide");
+  $("fibCheck").classList.add("hide");
+  $("fibNext").classList.remove("hide");
+  $("fibNext").textContent = (idx >= ITEMS.length) ? "See my score" : "Continue";
+  $("fibSpeakRow").classList.remove("hide");
+
+  // read the finished sentence back to the reader
+  speakFibSentence();
+}
+
+function nextAfterFib(){
+  setCount++;
+  nextQuestionPlain();
+}
+function nextQuestionPlain(){
+  if (idx >= ITEMS.length) { finish(); return; }
+  only("screenQuiz");
+  renderQuestion();
+}
+
+/* ---------- RESULTS ---------- */
+function finish(){
+  only("screenResults");
+  $("rsScore").textContent = score + " / " + ITEMS.length;
+  const pct = ITEMS.length ? Math.round(score / ITEMS.length * 100) : 0;
+  let line = "You got " + score + " of " + ITEMS.length + ".";
+  if (pct === 100) line = "Perfect. Every word, right.";
+  else if (pct >= 80) line = "Strong work. Almost all of them.";
+  else if (pct >= 50) line = "Good start. The hard ones are listed below.";
+  else line = "Keep going. Look at the list, then try again.";
+  $("rsLine").textContent = line;
+
+  const uniq = [...new Set(missed)];
+  $("rsMiss").innerHTML = uniq.length
+    ? uniq.map(w => "<li><b>" + esc(w) + "</b></li>").join("")
+    : "<li>Nothing to review.</li>";
+  show("rsMissCard", uniq.length > 0);
+
+  if (pct >= 80) confetti();
+  else sfxOk();
+}
+
+function quit(){ goHome(); }
+
+/* ---------- CONFETTI (no assets) ---------- */
+function confetti(){
+  const cv = $("confetti");
+  cv.classList.remove("hide");
+  const ctx = cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+  cv.style.width = innerWidth + "px"; cv.style.height = innerHeight + "px";
+  ctx.scale(dpr, dpr);
+
+  const cols = ["#0f766e","#f0b429","#e05d44","#3b82f6","#8b5cf6","#15803d"];
+  const N = 130;
+  const ps = Array.from({length: N}, () => ({
+    x: Math.random() * innerWidth,
+    y: -20 - Math.random() * innerHeight * 0.4,
+    w: 6 + Math.random() * 7,
+    h: 8 + Math.random() * 9,
+    vy: 2.2 + Math.random() * 3.2,
+    vx: -1.2 + Math.random() * 2.4,
+    rot: Math.random() * Math.PI,
+    vr: -0.12 + Math.random() * 0.24,
+    c: cols[Math.floor(Math.random() * cols.length)]
+  }));
+
+  let t0 = performance.now();
+  function frame(t){
+    const dt = Math.min(32, t - t0); t0 = t;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    let alive = false;
+    for (const p of ps){
+      p.x += p.vx * dt * 0.06;
+      p.y += p.vy * dt * 0.06;
+      p.rot += p.vr * dt * 0.06;
+      if (p.y < innerHeight + 40) alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) requestAnimationFrame(frame);
+    else { ctx.clearRect(0,0,innerWidth,innerHeight); cv.classList.add("hide"); }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- MODE ENTRY ---------- */
+async function startMode(mode){
+  lastMode = mode;
+  only("screenQuiz");
+  $("qCount").textContent = "getting ready";
+  $("qWord").textContent = "";
+  $("qSentence").textContent = "";
+  $("qPrompt").textContent = mode === "hard" ? "Finding the hardest words…" : "Finding the easiest words…";
+  $("qOpts").innerHTML = "";
+  $("qAI").classList.add("hide");
+  $("qLock").classList.add("hide");
+  $("qNext").classList.add("hide");
+
+  try{
+    const {words, toppedUp, fromBank} = await bankWords(mode, TOTAL);
+    let note = mode === "hard" ? "Hardest words" : "Easiest words";
+    if (toppedUp) note += " · " + toppedUp + " starter word" + (toppedUp>1?"s":"") + " added (bank has " + fromBank + ")";
+    await buildRun(words, note);
+  } catch(e){
+    only("screenHome");
+    $("homeNote").innerHTML = "<b style='color:#b91c1c'>" + esc(e.message || "could not start") +
+      "</b><div style='margin-top:8px'>Try Scan a book page instead.</div>";
+  }
+}
+
+/* ---------- SCAN → QUIZ ---------- */
+async function buildFromScan(){
+  const btn = $("quizBtn");
+  btn.disabled = true;
+  setStatus("quizStatus", "Picking words…", "work");
+
+  try{
+    const text = currentText;
+
+    // 1. let the model choose the words it would practise
+    let aiWords = [];
+    try{
+      const pick = await askModel(
+        "From this English text, list 10 easy vocabulary words a P5 learner reading this book should practise.\n" +
+        "Prefer concrete nouns, common verbs and simple adjectives that actually appear in the text.\n" +
+        'Reply with JSON only: {"words":["word1","word2"]}\n\nText:\n' + text,
+        400, true);
+      aiWords = (pick.words || []).filter(w => typeof w === "string" && /^[a-z\- ]{3,}$/i.test(w));
+    } catch(e){}
+
+    // 2. add the words the reader picked, so they lead
+    let words = [...picked, ...aiWords];
+    // 3. if the reader picked few, ask the model for a few more from the page at their level
+    if (picked.length && words.length < 10){
+      try{
+        const more = await askModel(
+          "A P5 reader chose these words from a book page: " + picked.join(", ") + ".\n" +
+          "Suggest 6 more useful words from the same page that suit the same reader.\n" +
+          'Reply with JSON only: {"words":["..."]}\n\nPage:\n' + text.slice(0, 2500),
+          300, true);
+        words = words.concat((more.words || []));
+      } catch(e){}
+    }
+
+    words = [...new Set(words.map(w => String(w).toLowerCase().trim()))].filter(Boolean).slice(0, TOTAL);
+    if (!words.length) throw new Error("no words could be taken from this page");
+
+    setStatus("quizStatus", "Writing questions…", "work");
+    await buildRun(words, picked.length ? "Your words + the app's words" : "Words chosen from your page");
+  } catch(e){
+    setStatus("quizStatus", e.message || "something went wrong", "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function openScan(){
+  only("screenScan");
+  paintThumbs();
+  paintTray();
+}
+
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function hlWord(it){
+  const m = String((it && it.sentence) || "").match(/<span class='hl'>(.*?)<\/span>/);
+  return m ? m[1] : (it && it.word) || "word";
+}
+
+/* ---------- BOOT ---------- */
+(function boot(){
+  const k = getKey();
+  if (k) { show("screenGate", false); goHome(); }
+  else { $("gatePw").focus(); }
+})();
+</script>
+</body>
+</html>

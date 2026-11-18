@@ -1,0 +1,22 @@
+# Library requirements — Word Doctor · Library
+#
+# There are none. That is the point of this application.
+#
+# index.html runs in a browser with no build step, no bundler and no
+# installed packages. It uses only what the browser already provides:
+#   - fetch / crypto.subtle (SHA-256 gate)
+#   - getUserMedia (camera)
+#   - speechSynthesis (pronunciation)
+#   - AudioContext (sound effects)
+#   - localStorage / canvas
+#
+# It calls two hosted services, both over HTTPS with no SDK:
+#   - https://api.deepseek.com        (language model: reads photos, writes items)
+#   - https://simple.wikipedia.org    (sentence corpus, CC BY-SA)
+#
+# stats_server.py, the optional shared word bank, needs the Python standard
+# library only — no pip install:
+#   python3 stats_server.py --port 8099
+#
+# Open index.html and enter the class password and a DeepSeek API key.
+# Nothing to install.

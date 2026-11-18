@@ -1,0 +1,23 @@
+# test and scratch artefacts
+_*.py
+_*.js
+_*.png
+_*.jpg
+_*.json
+_*.html
+
+# the shared word bank, if the server is run from this folder
+wordbank.json
+wordbank.json.tmp
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
