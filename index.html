@@ -180,6 +180,7 @@
       </div>
       <div class="row hide" id="camShot">
         <button class="primary" onclick="takeShot()">Take the picture</button>
+        <button class="ghost" style="flex:0 0 auto;text-align:center" onclick="flipCam()">⇄ Switch camera</button>
       </div>
       <div class="thumbs" id="thumbs"></div>
       <div class="status" id="camStatus"></div>
@@ -504,14 +505,31 @@ function paintHome(){
 
 /* ---------- CAMERA ---------- */
 let stream = null, shots = [];
+// A book page is in front of the reader, so the back camera is the one that
+// points at it. "ideal" rather than "exact" so a single-camera device still works.
+let facingMode = "environment";
 
-async function toggleCam(){
-  if (stream) { stopCam(); return; }
+async function openStream(mode){
+  return await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: mode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    audio: false
+  });
+}
+
+async function startCam(mode){
   const v = $("cam");
-  $("camStatus").className = "status work";
-  $("camStatus").textContent = "Starting the camera…";
   try{
-    stream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
+    try {
+      stream = await openStream(mode);
+    } catch(e){
+      // some tablets refuse the size hint or the facing hint; take anything
+      if (e && (e.name === "OverconstrainedError" || e.name === "NotReadableError")) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } else {
+        throw e;
+      }
+    }
+    facingMode = mode;
     v.srcObject = stream;
     show("cam", true);
     await v.play();
@@ -519,16 +537,40 @@ async function toggleCam(){
     if (v.videoWidth === 0) { await new Promise(r => setTimeout(r, 500)); }
     $("camStart").textContent = "Stop camera";
     show("camShot", true);
-    $("camStatus").className = "status";
-    $("camStatus").textContent = "Camera ready. Fill the frame with the page.";
+    return true;
   } catch(err){
     stream = null;
-    $("camStatus").className = "status err";
     const n = (err && err.name) || "";
+    $("camStatus").className = "status err";
     if (n === "NotAllowedError") $("camStatus").textContent = "The camera is blocked. Allow it in the address bar, then try again.";
     else if (n === "NotFoundError") $("camStatus").textContent = "No camera was found on this device. Use a photo instead.";
     else if (n === "NotReadableError") $("camStatus").textContent = "The camera is busy in another app. Close it and try again.";
     else $("camStatus").textContent = "The camera did not start. Use a photo instead.";
+    return false;
+  }
+}
+
+async function toggleCam(){
+  if (stream) { stopCam(); return; }
+  $("camStatus").className = "status work";
+  $("camStatus").textContent = "Starting the camera…";
+  if (await startCam(facingMode)) {
+    $("camStatus").className = "status";
+    $("camStatus").textContent = "Camera ready. Fill the frame with the page.";
+  }
+}
+
+async function flipCam(){
+  if (!stream) return;
+  const next = facingMode === "environment" ? "user" : "environment";
+  stopCam();
+  $("camStatus").className = "status work";
+  $("camStatus").textContent = next === "environment" ? "Switching to the back camera…" : "Switching to the front camera…";
+  if (await startCam(next)) {
+    $("camStatus").className = "status";
+    $("camStatus").textContent = next === "environment"
+      ? "Back camera. Point it at the page."
+      : "Front camera. Point it at the page.";
   }
 }
 function stopCam(){
