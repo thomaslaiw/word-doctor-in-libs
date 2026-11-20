@@ -925,6 +925,56 @@ async function multiWordSentences(words, limit){
   return pool.slice(0, limit || 4);
 }
 
+function escapeRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+// Gap the first occurrence of each target word (left to right, dropping overlaps).
+// Returns { sentence, answers } where answers are the exact word-forms gap-ped.
+function gapTargets(sentence, words){
+  const spans = [];
+  for (const w of words){
+    const re = new RegExp("\\b" + escapeRe(w) + "\\b", "i");
+    const m = sentence.match(re);
+    if (m) spans.push({ start: m.index, end: m.index + m[0].length, word: m[0] });
+  }
+  if (!spans.length) return null;
+  spans.sort((a,b) => a.start - b.start);
+  const keep = [];
+  let lastEnd = -1;
+  for (const sp of spans){
+    if (sp.start >= lastEnd){ keep.push(sp); lastEnd = sp.end; }
+  }
+  let out = "", pos = 0, answers = [];
+  for (const sp of keep){
+    out += sentence.slice(pos, sp.start) + "___";
+    answers.push(sp.word);
+    pos = sp.end;
+  }
+  out += sentence.slice(pos);
+  return { sentence: out, answers };
+}
+
+// Choose a real published sentence for the fill in the blank, and the words to gap.
+// The sentence always comes from Simple Wikipedia - never written by the model.
+async function pickFibBase(five){
+  // 1. prefer a published sentence that uses more than one of the words
+  const multi = await multiWordSentences(five, 3);
+  for (const c of multi){
+    const hit = five.filter(w => new RegExp("\\b" + escapeRe(w) + "\\b", "i").test(c.s));
+    if (hit.length >= 2){
+      const g = gapTargets(c.s, hit);
+      if (g && g.answers.length >= 2) return g;
+    }
+  }
+  // 2. otherwise a published sentence for a single word from this run's corpus
+  for (const w of five){
+    const s = (CORPUS[w] || "").trim();
+    if (!s) continue;
+    const g = gapTargets(s, [w]);
+    if (g) return g;
+  }
+  return null;
+}
+
 /* ---------- QUICK MODEL CALL ---------- */
 async function askModel(prompt, maxTokens, json){
   const body = {
@@ -1052,32 +1102,25 @@ async function makeItems(pairs){   // pairs: [{word, sentence}]
 }
 
 /* ---------- FILL IN THE BLANK ---------- */
-async function makeFillBlank(fiveWords, candidates){
-  const candTxt = candidates && candidates.length
-    ? candidates.map(c => "- " + c.s + "   (uses " + c.hits + " of the words)").join("\n")
-    : "(none found)";
-
+async function makeFillBlank(sentence, answers){
   const prompt =
-    "You write ONE fill-in-the-blank question for a Hong Kong primary reader (P5-P6).\n" +
-    "Target words from the last five questions: " + fiveWords.join(", ") + "\n\n" +
-    "Published sentences that use more than one of those words:\n" + candTxt + "\n\n" +
-    "Rules:\n" +
-    "1. Use one of the published sentences above if one uses at least two of the target words.\n" +
-    "   Otherwise write one short, simple sentence of your own that uses two of the words.\n" +
-    "2. Leave 1 to 3 gaps, and every gap must be filled by one of the target words.\n" +
-    "   Mark each gap with exactly three underscores: ___\n" +
-    "3. Provide the answers in the order the gaps appear.\n" +
-    "4. Provide 3 EXTRA options that are NOT answers. A wrong option must be clearly different in\n" +
-    "   meaning from every answer. NEVER use a synonym, a near-synonym, or another form of an answer\n" +
-    "   (so if the answer is 'heavy', do not offer 'heavily' or 'weighty').\n" +
-    "5. Options must be real words a P5 reader has met.\n" +
-    "6. Sentence: 20 words maximum. Chinese must be standard written Traditional Chinese.\n" +
-    "7. aiEn and aiZh talk to the READER, using 'you'. Never write 'the student', 'the learner',\n" +
-    "   'students', or 'the child'. Describe the sentence, not a third person who answered it.\n" +
-    "   Good: 'The lamp gives light, so it fits here.' Bad: 'The student chose the right word.'\n" +
-    "8. aiZh must also address the reader. Never use 學生 as the subject of the sentence.\n\n" +
-    'Reply with JSON only: {"sentence":"... ___ ...","answers":["..."],"extras":["...","...","..."],' +
-    '"aiEn":"...","aiZh":"..."}';
+    "You finish ONE fill-in-the-blank question for a Hong Kong primary reader (P5-P6).\n" +
+    "The sentence below is a REAL published sentence from Simple English Wikipedia, with gaps marked ___.\n" +
+    "It is correct English as written.\n\n" +
+    "Sentence: " + sentence + "\n" +
+    "Correct word(s) for the gap(s), in order: " + answers.join(", ") + "\n\n" +
+    "Do exactly two things:\n" +
+    "1. Give 3 wrong options (distractors) for the word bank. Each must be a real English word a P5\n" +
+    "   reader has met, and clearly different in meaning from every answer. NEVER a synonym, a\n" +
+    "   near-synonym, or another form of an answer (if the answer is 'heavy', do not give 'heavily'\n" +
+    "   or 'weighty').\n" +
+    "2. Write one short comment. aiEn: simple English, 20 words maximum, talking to the reader as\n" +
+    "   'you', explaining why the correct word fits this sentence. aiZh: standard written Traditional\n" +
+    "   Chinese, same meaning, also addressing the reader.\n" +
+    "   Never write 'the student', 'the learner', 'students', or 'the child'. aiZh must never use\n" +
+    "   學生 as the subject.\n" +
+    "   Good: 'The lamp gives light, so it fits here.' Bad: 'The student chose the right word.'\n\n" +
+    'Reply with JSON only: {"extras":["...","...","..."],"aiEn":"...","aiZh":"..."}';
 
   return await askModel(prompt, 1200, true);
 }
@@ -1088,6 +1131,7 @@ async function makeFillBlank(fiveWords, candidates){
 let ITEMS = [], idx = 0, score = 0, missed = [], setCount = 0;
 const SET_SIZE = 5, TOTAL = 10;
 let pendingFib = null, fibAfter = 0;
+let CORPUS = {};   // published sentences (Simple Wikipedia), word -> sentence, for the fill-in-the-blank
 
 function setStatus(id, txt, cls){
   const el = $(id);
@@ -1115,6 +1159,7 @@ async function buildRun(words, note){
   // items that repeated that page word for word, which made the quiz a
   // comprehension check on the page instead of a vocabulary task.
   const corpus = await gatherCorpus(uniq);
+  CORPUS = Object.assign({}, corpus);   // snapshot of published-only sentences for the cloze
 
   // 3. last resort: no published sentence for that word. Ask for one short,
   //    simple sentence rather than dropping the word - dropping it would
@@ -1237,9 +1282,14 @@ let fibData = null, fibSlots = [], fibUsed = [];
 async function openFib(after){
   fibAfter = after;
   only("screenFill");
+  fibData = null;
   $("fibSentence").innerHTML = "<span style='color:#66707a'>writing a sentence…</span>";
   $("fibBank").innerHTML = "";
   $("fibAI").classList.add("hide");
+  $("fibAiEn").textContent = "";
+  $("fibAiZh").textContent = "";
+  $("fibNote").classList.add("hide");
+  $("fibNote").textContent = "";
   $("fibNext").classList.add("hide");
   $("fibSpeakRow").classList.add("hide");
   $("fibCheck").classList.remove("hide");
@@ -1247,9 +1297,12 @@ async function openFib(after){
 
   const five = ITEMS.slice(after - SET_SIZE, after).map(i => String(i.target || i.word || "").toLowerCase()).filter(Boolean);
   try{
-    const cands = await multiWordSentences(five, 4);
-    const data = await makeFillBlank(five, cands);
-    fibData = normaliseFib(data, five);
+    const base = await pickFibBase(five);
+    if (!base) throw new Error("no published sentence for these words");
+    const d = await makeFillBlank(base.sentence, base.answers);
+    d.sentence = base.sentence;
+    d.answers = base.answers;
+    fibData = normaliseFib(d, five);
     renderFib();
   } catch(e){
     // no fill in the blank is not fatal - the lesson continues
